@@ -333,20 +333,36 @@ function toast(t){const e=$("toast");e.textContent=t;e.classList.add("on");setTi
 function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));$(id).classList.add("on");scrollTo(0,0)}
 function rng(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}}
 
-/* 压缩图片到 768px 内，方便本地处理和上传 */
-function loadImage(file){
-  return new Promise((ok,bad)=>{
-    const url=URL.createObjectURL(file),img=new Image();
-    img.onload=()=>{
-      try{
-        const m=768,s=Math.min(1,m/Math.max(img.width,img.height));
-        const c=document.createElement("canvas");c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
-        c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);ok(c.toDataURL("image/jpeg",.88));
-      }catch(e){bad(e)}
-    };
-    img.onerror=()=>{URL.revokeObjectURL(url);bad(new Error("decode"))};
-    img.src=url;
-  });
+/* 压缩图片到 768px 内，方便本地处理和上传（兼容部分安卓机画布发黑） */
+function readAsDataURL(file){return new Promise((ok,bad)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=bad;r.readAsDataURL(file)})}
+function isBlank(c){
+  try{const t=document.createElement("canvas");t.width=t.height=16;const x=t.getContext("2d");x.drawImage(c,0,0,16,16);
+    const d=x.getImageData(0,0,16,16).data;let sum=0,mx=0,mn=255;for(let i=0;i<d.length;i+=4){const v=(d[i]+d[i+1]+d[i+2])/3;sum+=v;mx=Math.max(mx,v);mn=Math.min(mn,v)}
+    return mx-mn<4&&(sum/256<8||sum/256>250)}catch(e){return false}
+}
+async function getSource(file){
+  if(window.createImageBitmap){try{const b=await createImageBitmap(file,{imageOrientation:"from-image"});if(b.width&&b.height)return b}catch(e){}}
+  const url=URL.createObjectURL(file);const img=new Image();img.decoding="sync";
+  await new Promise((ok,bad)=>{img.onload=ok;img.onerror=()=>bad(new Error("decode"));img.src=url});
+  try{if(img.decode)await img.decode()}catch(e){}
+  img._url=url;return img;
+}
+function drawTo(src,m){
+  const w=src.naturalWidth||src.width,h=src.naturalHeight||src.height;const s=Math.min(1,m/Math.max(w,h));
+  const c=document.createElement("canvas");c.width=Math.max(1,Math.round(w*s));c.height=Math.max(1,Math.round(h*s));
+  const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.drawImage(src,0,0,c.width,c.height);return c;
+}
+async function loadImage(file){
+  let src;try{src=await getSource(file)}catch(e){throw e}
+  for(let k=0;k<2;k++){
+    const c=drawTo(src,k?640:768);
+    if(!isBlank(c)){if(src._url)URL.revokeObjectURL(src._url);return c.toDataURL("image/jpeg",.88)}
+    await new Promise(r=>setTimeout(r,300));
+  }
+  if(src._url)URL.revokeObjectURL(src._url);
+  // 画布异常：直接用原图（太大则提示）
+  if(file.size>2.5*1024*1024) throw new Error("toolarge");
+  return readAsDataURL(file);
 }
 
 /* ================= 本地示例分析（未接模型时使用） ================= */
@@ -384,6 +400,7 @@ function mockAnalyze(dataURL){
 }
 
 function shrink(dataURL,max=768){
+  if(dataURL.length<1500000) return Promise.resolve(dataURL);
   return new Promise(ok=>{const img=new Image();img.onload=()=>{
     const k=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");
     c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
@@ -519,7 +536,7 @@ function makeShare(){
 $("file").addEventListener("change",async e=>{
   const f=e.target.files&&e.target.files[0];if(!f)return;
   $("upTitle").textContent="照片读取中…";
-  try{photoURL=await loadImage(f)}catch(err){$("upTitle").textContent="上传照片";toast(/heic|heif/i.test(f.type+f.name)?"暂不支持HEIC格式，请换JPG/PNG照片":"图片读取失败，换一张试试");return}
+  try{photoURL=await loadImage(f)}catch(err){$("upTitle").textContent="上传照片";toast(/heic|heif/i.test(f.type+f.name)?"暂不支持HEIC格式，请换JPG/PNG照片":err.message==="toolarge"?"这张照片太大了，换张小一点的或截个图试试":"图片读取失败，换一张试试");return}
   $("preview").src=photoURL;$("preview").style.display="block";$("plus").style.display="none";
   $("upTitle").textContent="照片已就绪";$("upHint").textContent="点击可更换";$("go").disabled=false;
 });
