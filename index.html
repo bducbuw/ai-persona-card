@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>AI气质人设卡 · 测测你是哪种气质</title>
+<meta name="description" content="上传一张照片，AI为你生成专属气质人设卡">
+<style>
+:root{
+  --bg1:#FFF6EC;--bg2:#FDE7E4;--ink:#3B2F2F;--muted:#8A7B76;
+  --accent:#E8846B;--accent2:#F3B48B;--card:#FFFFFF;--line:#F1E3DA;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  color:var(--ink);background:linear-gradient(160deg,var(--bg1) 0%,var(--bg2) 100%);background-attachment:fixed;
+  display:flex;justify-content:center}
+.app{width:100%;max-width:440px;min-height:100vh;padding:28px 20px 40px;position:relative}
+.screen{display:none;animation:fade .45s ease}
+.screen.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* landing */
+.brand{font-size:13px;letter-spacing:4px;color:var(--accent);font-weight:600;text-align:center;margin-top:18px}
+h1{font-size:34px;text-align:center;margin:10px 0 8px;letter-spacing:2px}
+h1 span{background:linear-gradient(90deg,var(--accent),#C77DB5);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{text-align:center;color:var(--muted);font-size:14px;line-height:1.7}
+.sample{margin:26px auto 22px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.chip{font-size:12px;padding:6px 12px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--ink)}
+.upload{display:block;margin:0 auto;width:100%;border:2px dashed #EBC7B6;border-radius:24px;background:rgba(255,255,255,.7);
+  padding:34px 16px;text-align:center;cursor:pointer;transition:.2s}
+.upload:active{transform:scale(.98)}
+.upload .icon{width:64px;height:64px;border-radius:50%;margin:0 auto 12px;background:linear-gradient(135deg,var(--accent2),var(--accent));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-size:34px;line-height:1}
+.upload b{font-size:17px;display:block;margin-bottom:6px}
+.upload small{color:var(--muted);font-size:12px}
+#preview{display:none;width:150px;height:150px;object-fit:cover;border-radius:50%;margin:0 auto 12px;border:4px solid #fff;box-shadow:0 6px 20px rgba(200,120,100,.25)}
+.field{margin:18px 0 0}
+.field input{width:100%;padding:14px 16px;border-radius:14px;border:1px solid var(--line);background:#fff;font-size:15px;outline:none;color:var(--ink)}
+.btn{display:block;width:100%;border:none;border-radius:999px;padding:15px;font-size:16px;font-weight:600;cursor:pointer;margin-top:16px;transition:.2s}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:linear-gradient(90deg,var(--accent),#D9789C);color:#fff;box-shadow:0 8px 22px rgba(232,132,107,.35)}
+.btn.primary:disabled{opacity:.45;box-shadow:none}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.note{text-align:center;font-size:11px;color:var(--muted);margin-top:14px;line-height:1.6}
+.count{text-align:center;font-size:12px;color:var(--muted);margin-top:22px}
+.count b{color:var(--accent)}
+
+/* analyzing */
+.scan{position:relative;width:240px;height:240px;margin:70px auto 30px;border-radius:28px;overflow:hidden;box-shadow:0 12px 30px rgba(200,120,100,.25)}
+.scan img{width:100%;height:100%;object-fit:cover;filter:saturate(.9)}
+.scan:after{content:"";position:absolute;left:0;right:0;height:60px;top:-60px;
+  background:linear-gradient(180deg,transparent,rgba(255,200,170,.75),transparent);animation:sweep 1.6s linear infinite}
+.scan .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.25) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.25) 1px,transparent 1px);background-size:24px 24px}
+@keyframes sweep{to{top:240px}}
+.status{text-align:center;font-size:16px;font-weight:600;min-height:24px}
+.bar{height:6px;background:#fff;border-radius:6px;margin:18px 30px 0;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width .4s}
+
+/* result */
+.card{background:var(--card);border-radius:28px;overflow:hidden;box-shadow:0 14px 40px rgba(180,110,90,.18)}
+.hero{position:relative;padding:26px 22px 20px;color:#fff;text-align:center}
+.hero .photo{width:118px;height:118px;border-radius:50%;object-fit:cover;border:4px solid rgba(255,255,255,.85);box-shadow:0 8px 20px rgba(0,0,0,.12)}
+.hero .who{font-size:12px;opacity:.9;margin-top:10px;letter-spacing:1px}
+.hero .series{display:inline-block;margin-top:12px;font-size:12px;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,.25)}
+.hero .name{font-size:28px;font-weight:800;margin-top:8px;letter-spacing:2px;text-shadow:0 2px 8px rgba(0,0,0,.08)}
+.body{padding:20px 22px 24px}
+.tags{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.tags span{font-size:13px;padding:5px 12px;border-radius:999px;font-weight:600}
+.quote{font-size:14px;line-height:1.9;color:#5A4A46;background:#FFF8F2;border-radius:16px;padding:14px 16px}
+.score{display:flex;align-items:center;justify-content:space-between;margin:18px 0 6px}
+.score .num{font-size:44px;font-weight:800;line-height:1}
+.score .num small{font-size:14px;font-weight:600;margin-left:2px}
+.score .txt{text-align:right;font-size:12px;color:var(--muted);line-height:1.6}
+.score .txt b{font-size:15px}
+canvas#radar{display:block;margin:6px auto 0;width:260px;height:230px}
+.sec{font-size:13px;font-weight:700;margin:18px 0 10px;display:flex;align-items:center;gap:6px}
+.sec:before{content:"";width:4px;height:14px;border-radius:2px;background:var(--accent)}
+.tips{display:grid;gap:10px}
+.tip{display:flex;gap:10px;font-size:13px;line-height:1.6;color:#5A4A46}
+.tip em{font-style:normal;flex:none;font-weight:700;width:44px;color:var(--ink)}
+.match{font-size:13px;color:#5A4A46;line-height:1.7}
+.actions{margin-top:18px}
+.row{display:flex;gap:10px}
+.row .btn{margin-top:10px}
+
+/* report */
+.report{margin-bottom:4px}
+.rep-head{display:flex;gap:16px;align-items:center;padding:22px 22px 6px}
+.rep-photo{width:96px;height:96px;border-radius:22px;object-fit:cover;flex:none;box-shadow:0 6px 16px rgba(180,110,90,.2)}
+.rep-title{font-size:15px;font-weight:700}
+.rep-score{margin-top:4px;display:flex;align-items:baseline;gap:8px}
+.rep-score b{font-size:40px;line-height:1.1;background:linear-gradient(90deg,var(--accent),#D9789C);-webkit-background-clip:text;background-clip:text;color:transparent}
+.rep-score small{font-size:12px;color:var(--muted)}
+.rep-best{font-size:12px;color:var(--accent);font-weight:600;margin-top:2px}
+.ratio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ratio div{background:#FFF8F2;border-radius:14px;padding:10px 6px;text-align:center}
+.ratio b{display:block;font-size:15px;margin:2px 0}
+.ratio span{font-size:11px;color:var(--muted)}
+.ratio i{font-style:normal;font-size:11px;color:var(--accent)}
+.aspects{display:grid;gap:10px}
+.asp{border:1px solid var(--line);border-radius:16px;padding:12px 14px;opacity:0;transform:translateY(6px);transition:.4s}
+.asp.in{opacity:1;transform:none}
+.asp-top{display:flex;align-items:center;gap:8px}
+.asp-top .ic{font-size:18px}
+.asp-top .nm{font-size:14px;font-weight:700}
+.asp-top .lb{font-size:12px;color:var(--accent);margin-left:auto;font-weight:600}
+.asp-bar{display:flex;align-items:center;gap:8px;margin:8px 0 6px}
+.asp-bar .tr{flex:1;height:6px;background:#F6EAE3;border-radius:6px;overflow:hidden}
+.asp-bar .tr i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width 1s ease}
+.asp-bar b{font-size:13px;width:28px;text-align:right}
+.asp p{font-size:13px;line-height:1.7;color:#5A4A46}
+.asp.best{border-color:var(--accent);background:#FFF8F4}
+.asp.best .nm:after{content:"最出彩";font-size:10px;color:#fff;background:var(--accent);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
+.divider{text-align:center;font-size:13px;color:var(--muted);margin:26px 0 14px}
+#reveal{margin:18px 0 6px}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(40,25,20,.72);display:none;align-items:center;justify-content:center;flex-direction:column;padding:24px;z-index:9}
+.modal.on{display:flex}
+.modal img{max-width:100%;max-height:72vh;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+.modal p{color:#fff;font-size:14px;margin:14px 0 4px}
+.modal .row{width:100%;max-width:340px}
+.toast{position:fixed;left:50%;bottom:60px;transform:translateX(-50%);background:rgba(50,35,30,.9);color:#fff;font-size:13px;padding:10px 18px;border-radius:999px;opacity:0;transition:.3s;pointer-events:none;z-index:10}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 1. 首页 -->
+  <section class="screen on" id="s-home">
+    <div class="brand">AI · PERSONA CARD</div>
+    <h1>测测你的<span>气质人设</span></h1>
+    <p class="sub">上传一张清晰正脸照<br>AI读懂你的眉眼与气场，生成专属人设卡</p>
+    <div class="sample">
+      <span class="chip">🌙 清冷系·月光学姐</span>
+      <span class="chip">☕ 温柔系·午后拿铁</span>
+      <span class="chip">🎞️ 故事感·雨天胶片女主</span>
+    </div>
+    <label class="upload" for="file">
+      <img id="preview" alt="">
+      <div class="icon" id="plus">+</div>
+      <b id="upTitle">上传照片</b>
+      <small id="upHint">支持相册或拍照，建议光线充足、五官清晰</small>
+    </label>
+    <input type="file" id="file" accept="image/*" hidden>
+    <div class="field"><input id="nick" maxlength="10" placeholder="你的昵称（选填，会印在卡片上）"></div>
+    <button class="btn primary" id="go" disabled>生成我的人设卡</button>
+    <p class="note">照片仅用于本次分析，不会被保存<br>结果仅供娱乐，你本来就很好看 ✨</p>
+  </section>
+
+  <!-- 2. 分析中 -->
+  <section class="screen" id="s-load">
+    <div class="scan"><img id="scanImg" alt=""><div class="grid"></div></div>
+    <p class="status" id="status">正在读取眉眼弧度…</p>
+    <div class="bar"><i id="prog"></i></div>
+  </section>
+
+  <!-- 3. 结果 -->
+  <section class="screen" id="s-result">
+    <!-- 3a. 颜值分析报告 -->
+    <div class="card report">
+      <div class="rep-head">
+        <img class="rep-photo" id="aPhoto" alt="">
+        <div class="rep-meta">
+          <div class="rep-title" id="aWho"></div>
+          <div class="rep-score"><b id="aScore"></b><small>颜值综合分</small></div>
+          <div class="rep-best" id="aBest"></div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="sec">面部比例</div>
+        <div class="ratio" id="aRatio"></div>
+        <div class="sec">六维五官解析</div>
+        <div class="aspects" id="aAspects"></div>
+        <div class="sec">AI 总评</div>
+        <div class="quote" id="aSum"></div>
+      </div>
+    </div>
+    <button class="btn primary" id="reveal">揭晓我的气质人设 ✨</button>
+
+    <!-- 3b. 气质结论 -->
+    <div id="personaWrap" style="display:none">
+    <div class="divider">— 综合以上分析，你的气质人设是 —</div>
+    <div class="card" id="card">
+      <div class="hero" id="hero">
+        <img class="photo" id="rPhoto" alt="">
+        <div class="who" id="rWho"></div>
+        <div class="series" id="rSeries"></div>
+        <div class="name" id="rName"></div>
+      </div>
+      <div class="body">
+        <div class="tags" id="rTags"></div>
+        <div class="quote" id="rQuote"></div>
+        <div class="score">
+          <div class="num" id="rScore"></div>
+          <div class="txt">人设稀有度<br>气质匹配度 <b id="rBeat"></b></div>
+        </div>
+        <canvas id="radar" width="520" height="460"></canvas>
+        <div class="sec">专属变美指南</div>
+        <div class="tips" id="rTips"></div>
+        <div class="sec">最佳气质搭子</div>
+        <div class="match" id="rMatch"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="save">保存分享图</button>
+      <div class="row">
+        <button class="btn ghost" id="again">再测一次</button>
+        <button class="btn ghost" id="invite">邀请好友来测</button>
+      </div>
+    </div>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="modal">
+  <img id="shareImg" alt="分享图">
+  <p>长按图片保存，或点击下方下载</p>
+  <div class="row">
+    <a class="btn primary" id="dl" download="我的气质人设卡.png" style="text-align:center;text-decoration:none">下载图片</a>
+    <button class="btn ghost" id="close">关闭</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= 配置 =================
+ * 下一步接入大模型时，只需把 API_ENDPOINT 改成你的后端/云函数地址。
+ * 后端接收 {image: dataURL}，返回与 mockAnalyze 相同结构的 JSON。
+ * 注意：不要把大模型 API Key 写在这个前端文件里（GitHub Pages 上任何人都能看到）。
+ */
+const CONFIG = { API_ENDPOINT: "" };
+
+/* ================= 人设库（本地示例） ================= */
+const PERSONAS = [
+ {series:"清冷系",name:"月光学姐",emoji:"🌙",c:["#8EA6C9","#B9A7D6"],tags:["疏离感","干净","慢热"],
+  quote:"第一眼像隔着一层薄雾，熟了才发现是温柔本人。你不用很热闹，安静站着就是一种存在感。",
+  base:[62,92,40,70,80],makeup:"雾面底妆+灰调眼影，唇色选豆沙或冷调玫瑰",outfit:"白衬衫、灰蓝针织、长款大衣，配色控制在三种以内",photo:"侧脸45°+自然光，眼神看向画面外",
+  match:"「温柔系·午后拿铁」——一个负责清冷，一个负责把你捂热"},
+ {series:"温柔系",name:"午后拿铁",emoji:"☕",c:["#E3A57A","#F2C9A0"],tags:["亲和力","治愈","会照顾人"],
+  quote:"你的气质像下午三点的阳光，暖但不晒。和你说话的人，总会不自觉地放慢语速。",
+  base:[95,45,65,82,60],makeup:"奶油肌底妆+大地色眼影，腮红扫在笑肌偏下",outfit:"米色针织开衫、燕麦色半裙，多用柔软面料",photo:"微笑露一点牙，背景选咖啡店或窗边暖光",
+  match:"「清冷系·月光学姐」——你们是互补型友情天花板"},
+ {series:"元气系",name:"汽水少女",emoji:"🫧",c:["#7FC8C2","#F7B7A3"],tags:["感染力","明亮","行动派"],
+  quote:"你一出现，空气里就有气泡在冒。你的快乐不吵闹，但很容易传染给别人。",
+  base:[75,30,96,68,52],makeup:"水光底妆+蜜桃腮红，唇釉选西柚色",outfit:"条纹T恤、牛仔背带、帆布鞋，颜色可以大胆一点",photo:"抓拍跳跃或回头瞬间，饱和度微微调高",
+  match:"「松弛系·海边书店店主」——你负责冲，TA负责稳"},
+ {series:"松弛系",name:"海边书店店主",emoji:"🌊",c:["#86B6C6","#E6D3B3"],tags:["从容","自洽","不内耗"],
+  quote:"你身上有种“不着急”的魔力。别人在赶路，你在看风景，而且你总能准时到达。",
+  base:[78,55,58,96,72],makeup:"轻薄底妆保留一点肤质感，眉毛自然野生",outfit:"亚麻衬衫、宽松长裤、草编包，颜色偏低饱和",photo:"不看镜头，手里拿本书或一杯饮料",
+  match:"「元气系·汽水少女」——一静一动，刚刚好"},
+ {series:"故事感",name:"雨天胶片女主",emoji:"🎞️",c:["#9C8AA5","#D9A6A0"],tags:["氛围感","有故事","眼神会说话"],
+  quote:"你的脸自带滤镜和配乐。别人拍照要找角度，你随手一拍都像电影截图。",
+  base:[70,74,42,66,97],makeup:"低饱和眼影带一点晕染，唇色选复古红棕",outfit:"风衣、格纹半裙、乐福鞋，可以加一顶贝雷帽",photo:"雨天或傍晚拍，加胶片颗粒，留一点虚焦",
+  match:"「文艺系·旧书页里的诗」——同频的人一眼就能认出彼此"},
+ {series:"少年感",name:"风里的白衬衫",emoji:"🍃",c:["#9CC9A8","#C9DDE8"],tags:["清爽","真诚","干净利落"],
+  quote:"你有种被风吹过的清爽感，笑起来很坦荡。像夏天操场边那排树，让人想多看两眼。",
+  base:[72,60,82,80,58],makeup:"几乎素颜感，重点放在根根分明的眉毛和润唇",outfit:"白T、衬衫、直筒裤，越简单越出彩",photo:"逆光或树荫下，大笑或眯眼都好看",
+  match:"「甜酷系·机车甜心」——你们站一起就是青春片海报"},
+ {series:"甜酷系",name:"机车甜心",emoji:"🖤",c:["#2F2F3A","#E77C9A"],tags:["反差感","有态度","外酷内甜"],
+  quote:"你的表情说“别惹我”，眼睛却在说“其实我很好聊”。这种反差，最让人上头。",
+  base:[52,78,80,64,74],makeup:"上挑眼线+一点亮片，唇色选浆果色",outfit:"皮夹克、短裙、马丁靴，配一个可爱小挂件",photo:"仰拍或俯拍，不笑也很有张力",
+  match:"「少年感·风里的白衬衫」——酷和暖的最佳组合"},
+ {series:"古典系",name:"江南烟雨",emoji:"🌸",c:["#A8C3B5","#E8C4C4"],tags:["温婉","含蓄","耐看"],
+  quote:"你的美不靠第一眼取胜，而是越看越有味道。像一幅工笔画，细节全在留白里。",
+  base:[88,70,40,72,86],makeup:"柔雾底妆+细长眉形，唇妆选淡淡的胭脂色",outfit:"新中式盘扣上衣、马面裙或素色长裙",photo:"园林、竹林或白墙前，拿一把团扇",
+  match:"「知性系·图书馆管理员」——气质都很安静，一起很舒服"},
+ {series:"知性系",name:"图书馆管理员",emoji:"📚",c:["#A79C8C","#C8B6A6"],tags:["聪明","克制","有分寸"],
+  quote:"你看人的眼神很专注，说话有条理。跟你待在一起，像在一个整洁明亮的房间里。",
+  base:[76,72,48,74,78],makeup:"干净底妆+棕色细眼线，唇色选奶茶色",outfit:"针织马甲、西装外套、阔腿裤，加一副细框眼镜",photo:"书架前或桌边，低头翻书的瞬间",
+  match:"「古典系·江南烟雨」——安静的人最懂安静的人"},
+ {series:"明艳系",name:"玫瑰晚宴",emoji:"🌹",c:["#C9576B","#F0A28A"],tags:["存在感","大气","高光体质"],
+  quote:"你是那种走进房间，灯光会自动找到你的人。不用刻意，你就是画面的中心。",
+  base:[68,58,74,60,88],makeup:"光泽底妆+精致眼线，正红唇是你的主场",outfit:"缎面衬衫、黑色长裙、金色饰品",photo:"正面直视镜头，打一点侧光突出轮廓",
+  match:"「松弛系·海边书店店主」——你的光芒刚好有人安放"},
+ {series:"治愈系",name:"小熊软糖",emoji:"🧸",c:["#F2B880","#F6D6A8"],tags:["可爱","有安全感","笑点低"],
+  quote:"你身上有种让人想靠近的软乎乎的能量。别人难过时，最想找的就是你。",
+  base:[96,28,84,78,50],makeup:"圆眉+蜜桃色眼影，腮红打在苹果肌中央",outfit:"毛绒外套、背带裤、圆头鞋，颜色选奶油色系",photo:"嘟嘴或歪头，加一点暖色滤镜",
+  match:"「清冷系·月光学姐」——你能看到TA不为人知的温柔"},
+ {series:"文艺系",name:"旧书页里的诗",emoji:"🍂",c:["#B89A7A","#D9C4A8"],tags:["敏感","细腻","有自己的世界"],
+  quote:"你能注意到别人忽略的小事：落叶的颜色、一句话的停顿。你的世界很大，只是不常开放。",
+  base:[80,75,45,70,94],makeup:"大地色系为主，眼妆晕染开一点，唇色偏暖棕",outfit:"复古毛衣、长裙、帆布包，配一条围巾",photo:"秋天的街道或老书店，画面里留一点空白",
+  match:"「故事感·雨天胶片女主」——你们的合照一定很有氛围"}
+];
+const DIMS=["温柔","清冷","元气","松弛","故事感"];
+
+/* 六维五官解析库（只夸不贬） */
+const ASPECTS=[
+ {k:"脸型轮廓",ic:"💎",v:[
+  ["鹅蛋脸 · 线条柔和","下颌线流畅，侧脸轮廓很出片，正面看饱满又不失精致。"],
+  ["小圆脸 · 减龄感强","苹果肌饱满，脸部线条圆润，是越看越耐看的幼态感脸型。"],
+  ["心形脸 · 灵动小巧","额头饱满、下巴小巧，自带灵动感，各种发型都很好驾驭。"],
+  ["方圆脸 · 骨相高级","骨骼感清晰，轮廓有棱角又不硬朗，镜头感很强。"],
+  ["长脸 · 气质舒展","面部线条纵向舒展，显得成熟大气，侧颜尤其有质感。"]]},
+ {k:"眉眼",ic:"👁️",v:[
+  ["杏眼 · 眼神清亮","眼型圆润，眼尾微微上扬，看人时自带真诚感。"],
+  ["桃花眼 · 天生含情","眼尾带一点弧度，笑起来像在放电，很难不被注意。"],
+  ["丹凤眼 · 东方韵味","眼型修长，内眼角清晰，有种不刻意的高级感。"],
+  ["笑眼 · 亲和力满分","一笑眼睛就弯成月牙，是让人第一眼就有好感的眼睛。"],
+  ["下垂眼 · 无辜感","眼尾自然下垂，看起来温柔无害，让人忍不住想保护。"]]},
+ {k:"鼻型",ic:"✨",v:[
+  ["鼻梁挺直 · 立体感","鼻梁线条干净，让整张脸更立体，侧面很好看。"],
+  ["小巧鼻 · 精致感","鼻头圆润小巧，和五官比例很协调，显得秀气。"],
+  ["山根自然 · 柔和型","鼻子过渡自然不突兀，让五官整体更温和耐看。"]]},
+ {k:"唇形",ic:"💋",v:[
+  ["M唇 · 唇峰清晰","唇峰明显，涂口红特别出效果，不笑时也很精致。"],
+  ["微笑唇 · 嘴角上扬","嘴角天然上扬，不说话也像在微笑，亲和力很强。"],
+  ["饱满唇 · 有氛围","唇部饱满有肉感，自带一点复古和性感。"],
+  ["薄唇 · 清爽利落","唇形干净利落，整体显得清爽、有精神。"]]},
+ {k:"肤质光泽",ic:"🌟",v:[
+  ["通透感 · 光泽好","皮肤看起来干净透亮，在自然光下气色特别好。"],
+  ["柔焦感 · 细腻","肤感柔和细腻，像自带一层柔光滤镜。"],
+  ["健康感 · 有元气","肤色均匀有血色，看起来精神饱满、很有活力。"]]},
+ {k:"神态气场",ic:"🌙",v:[
+  ["眼神坚定 · 有主见","看镜头的眼神很稳，给人靠谱、有想法的印象。"],
+  ["神情放松 · 很自在","表情自然不紧绷，这种松弛感比五官本身更加分。"],
+  ["笑容有感染力","笑起来整张脸都在发光，是你最有记忆点的地方。"],
+  ["安静有故事","不笑时也很耐看，有种让人想多了解你的神秘感。"]]}
+];
+const SUMS=[
+ "你的五官单看都很耐看，组合在一起更显协调。{best}是你的颜值担当，整体比例接近标准三庭五眼，属于“越看越好看”的类型。",
+ "你的脸有很强的辨识度，{best}尤其出彩。五官之间的比例很舒服，素颜和上妆都有各自的味道。",
+ "比起“精致”，你的脸更胜在“有感觉”。{best}给整张脸定下了基调，加上协调的面部比例，非常适合拍氛围感照片。"
+];
+
+/* ================= 工具 ================= */
+const $=id=>document.getElementById(id);
+let photoURL="", result=null;
+function toast(t){const e=$("toast");e.textContent=t;e.classList.add("on");setTimeout(()=>e.classList.remove("on"),1800)}
+function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));$(id).classList.add("on");scrollTo(0,0)}
+function rng(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}}
+
+/* 压缩图片到 768px 内，方便本地处理和上传 */
+function loadImage(file){
+  return new Promise((ok,bad)=>{
+    const r=new FileReader();
+    r.onload=()=>{const img=new Image();img.onload=()=>{
+      const m=768,s=Math.min(1,m/Math.max(img.width,img.height));
+      const c=document.createElement("canvas");c.width=img.width*s;c.height=img.height*s;
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",.88));
+    };img.onerror=bad;img.src=r.result};
+    r.onerror=bad;r.readAsDataURL(file);
+  });
+}
+
+/* ================= 本地示例分析（未接模型时使用） ================= */
+function mockAnalyze(dataURL){
+  return new Promise(ok=>{
+    const img=new Image();img.onload=()=>{
+      const c=document.createElement("canvas");c.width=c.height=32;const x=c.getContext("2d");
+      x.drawImage(img,0,0,32,32);const d=x.getImageData(0,0,32,32).data;
+      let h=2166136261,br=0,warm=0;
+      for(let i=0;i<d.length;i+=4){h=Math.imul(h^(d[i]+d[i+1]*3+d[i+2]*7),16777619)>>>0;br+=d[i]+d[i+1]+d[i+2];warm+=d[i]-d[i+2]}
+      br/=d.length/4*3;warm/=d.length/4;
+      const R=rng(h);
+      // 亮度/冷暖影响倾向，让结果“看起来有依据”
+      let pool=PERSONAS.map((p,i)=>({i,w:1+(warm>15?(p.base[0]>80?1.5:0):(p.base[1]>70?1.5:0))+(br>150?(p.base[2]>70?1:0):(p.base[4]>80?1:0))+R()*2}));
+      pool.sort((a,b)=>b.w-a.w);
+      const p=PERSONAS[pool[0].i];
+      const dims=p.base.map(v=>Math.max(25,Math.min(99,Math.round(v+(R()-.5)*14))));
+      const score=86+Math.floor(R()*12);
+      const rarity=score>=94?"SSR":score>=90?"SR":"R+";
+      // 六维五官
+      const aspects=ASPECTS.map(a=>{const pick=a.v[Math.floor(R()*a.v.length)];return {name:a.k,icon:a.ic,label:pick[0],text:pick[1],score:85+Math.floor(R()*13)}});
+      const bi=aspects.reduce((m,a,i)=>a.score>aspects[m].score?i:m,0);aspects[bi].score=Math.max(aspects[bi].score,95);
+      const beauty=Math.round(aspects.reduce((s,a)=>s+a.score,0)/aspects.length*10)/10;
+      const t=[1,1,1].map(()=>(0.95+R()*0.1).toFixed(2));
+      const ratio=[
+        {k:"三庭比例",v:t.join(" : "),n:"接近 1:1:1 标准比例"},
+        {k:"五眼比例",v:(0.96+R()*0.08).toFixed(2),n:"眼距舒适协调"},
+        {k:"面部对称",v:(91+Math.floor(R()*8))+"%",n:"左右均衡"}];
+      const summary=SUMS[Math.floor(R()*SUMS.length)].replace("{best}",aspects[bi].name);
+      ok({beauty,best:aspects[bi].name,ratio,aspects,summary,
+          series:p.series,name:p.name,emoji:p.emoji,colors:p.c,tags:p.tags,quote:p.quote,dims,rarity,match_rate:score+"%",
+          tips:{"妆容":p.makeup,"穿搭":p.outfit,"拍照":p.photo},match:p.match});
+    };img.src=dataURL;
+  });
+}
+
+async function analyze(dataURL){
+  if(CONFIG.API_ENDPOINT){
+    const r=await fetch(CONFIG.API_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:dataURL})});
+    if(!r.ok) throw new Error("分析失败");
+    return r.json();
+  }
+  return mockAnalyze(dataURL);
+}
+
+/* ================= 雷达图 ================= */
+function drawRadar(ctx,cx,cy,R,vals,col,font){
+  const n=vals.length;ctx.save();
+  for(let k=4;k>=1;k--){ctx.beginPath();for(let i=0;i<n;i++){const a=-Math.PI/2+i*2*Math.PI/n,r=R*k/4;ctx[i?"lineTo":"moveTo"](cx+r*Math.cos(a),cy+r*Math.sin(a))}
+    ctx.closePath();ctx.fillStyle=k%2?"#FFF4EC":"#FFFFFF";ctx.fill();ctx.strokeStyle="#F0DCD0";ctx.lineWidth=1.5;ctx.stroke()}
+  ctx.beginPath();vals.forEach((v,i)=>{const a=-Math.PI/2+i*2*Math.PI/n,r=R*v/100;ctx[i?"lineTo":"moveTo"](cx+r*Math.cos(a),cy+r*Math.sin(a))});
+  ctx.closePath();ctx.fillStyle=col+"66";ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=3;ctx.stroke();
+  ctx.fillStyle="#5A4A46";ctx.font=font;ctx.textAlign="center";ctx.textBaseline="middle";
+  vals.forEach((v,i)=>{const a=-Math.PI/2+i*2*Math.PI/n,r=R+parseInt(font)*1.6;ctx.fillText(DIMS[i]+" "+v,cx+r*Math.cos(a),cy+r*Math.sin(a))});
+  ctx.restore();
+}
+
+/* ================= 渲染结果 ================= */
+function render(res){
+  result=res;const nick=$("nick").value.trim();
+  // 颜值分析报告
+  $("aPhoto").src=photoURL;
+  $("aWho").textContent=(nick?nick+" 的":"你的")+"颜值分析报告";
+  $("aScore").textContent=res.beauty;
+  $("aBest").textContent="✦ 最出彩：" + res.best;
+  $("aRatio").innerHTML=res.ratio.map(r=>`<div><span>${r.k}</span><b>${r.v}</b><i>${r.n}</i></div>`).join("");
+  $("aAspects").innerHTML=res.aspects.map(a=>`<div class="asp${a.name===res.best?" best":""}">
+    <div class="asp-top"><span class="ic">${a.icon}</span><span class="nm">${a.name}</span><span class="lb">${a.label}</span></div>
+    <div class="asp-bar"><div class="tr"><i data-w="${a.score}"></i></div><b>${a.score}</b></div>
+    <p>${a.text}</p></div>`).join("");
+  $("aSum").textContent=res.summary;
+  $("personaWrap").style.display="none";$("reveal").style.display="block";
+  setTimeout(()=>document.querySelectorAll(".asp").forEach((e,i)=>setTimeout(()=>{e.classList.add("in");e.querySelector(".tr i").style.width=e.querySelector(".tr i").dataset.w+"%"},i*220)),200);
+  // 气质结论
+  $("hero").style.background=`linear-gradient(135deg,${res.colors[0]},${res.colors[1]})`;
+  $("rPhoto").src=photoURL;
+  $("rWho").textContent=(nick?nick+" 的":"你的")+"气质人设";
+  $("rSeries").textContent=res.emoji+" "+res.series;
+  $("rName").textContent=res.name;
+  $("rTags").innerHTML=res.tags.map(t=>`<span style="background:${res.colors[0]}22;color:${res.colors[0]}">#${t}</span>`).join("");
+  $("rQuote").textContent="“"+res.quote+"”";
+  $("rScore").textContent=res.rarity;$("rScore").style.color=res.colors[0];
+  $("rBeat").textContent=res.match_rate;$("rBeat").style.color=res.colors[0];
+  $("rTips").innerHTML=Object.entries(res.tips).map(([k,v])=>`<div class="tip"><em>${k}</em><span>${v}</span></div>`).join("");
+  $("rMatch").textContent=res.match;
+  const ctx=$("radar").getContext("2d");ctx.clearRect(0,0,520,460);drawRadar(ctx,260,235,150,res.dims,res.colors[0],"bold 24px sans-serif");
+  show("s-result");
+}
+
+/* ================= 分享图（1080×1920） ================= */
+function wrap(ctx,text,x,y,maxW,lh,maxLines){
+  let line="",lines=[];for(const ch of text){if(ctx.measureText(line+ch).width>maxW){lines.push(line);line=ch}else line+=ch}
+  lines.push(line);lines=lines.slice(0,maxLines);lines.forEach((l,i)=>ctx.fillText(l,x,y+i*lh));return lines.length*lh;
+}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function makeShare(){
+  return new Promise(ok=>{
+    const r=result,W=1080,H=1920,c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");
+    const F='"PingFang SC","Microsoft YaHei",sans-serif';
+    let g=x.createLinearGradient(0,0,W,H);g.addColorStop(0,"#FFF6EC");g.addColorStop(1,"#FDE7E4");x.fillStyle=g;x.fillRect(0,0,W,H);
+    // 卡片
+    x.save();x.shadowColor="rgba(180,110,90,.22)";x.shadowBlur=50;x.shadowOffsetY=16;rr(x,70,90,940,1600,56);x.fillStyle="#fff";x.fill();x.restore();
+    x.save();rr(x,70,90,940,1600,56);x.clip();
+    g=x.createLinearGradient(70,90,1010,640);g.addColorStop(0,r.colors[0]);g.addColorStop(1,r.colors[1]);x.fillStyle=g;x.fillRect(70,90,940,600);x.restore();
+    const img=new Image();img.onload=()=>{
+      // 头像
+      const cx=540,cy=300,R=150;x.save();x.beginPath();x.arc(cx,cy,R+10,0,7);x.fillStyle="rgba(255,255,255,.85)";x.fill();
+      x.beginPath();x.arc(cx,cy,R,0,7);x.clip();const s=Math.max(2*R/img.width,2*R/img.height);
+      x.drawImage(img,cx-img.width*s/2,cy-img.height*s/2,img.width*s,img.height*s);x.restore();
+      x.textAlign="center";x.fillStyle="#fff";
+      const nick=$("nick").value.trim();
+      x.font=`32px ${F}`;x.globalAlpha=.9;x.fillText((nick?nick+" 的":"我的")+"气质人设",540,520);x.globalAlpha=1;
+      x.font=`bold 30px ${F}`;const st=r.emoji+" "+r.series,sw=x.measureText(st).width+50;
+      rr(x,540-sw/2,548,sw,52,26);x.fillStyle="rgba(255,255,255,.28)";x.fill();x.fillStyle="#fff";x.fillText(st,540,585);
+      x.font=`900 84px ${F}`;x.fillText(r.name,540,680);
+      // 标签
+      x.font=`bold 32px ${F}`;let tw=r.tags.map(t=>x.measureText("#"+t).width+48),tot=tw.reduce((a,b)=>a+b,0)+20*(tw.length-1),tx=540-tot/2;
+      r.tags.forEach((t,i)=>{rr(x,tx,740,tw[i],60,30);x.fillStyle=r.colors[0]+"22";x.fill();x.fillStyle=r.colors[0];x.fillText("#"+t,tx+tw[i]/2,781);tx+=tw[i]+20});
+      // 文案
+      rr(x,130,840,820,250,30);x.fillStyle="#FFF8F2";x.fill();
+      x.fillStyle="#5A4A46";x.font=`34px ${F}`;x.textAlign="left";wrap(x,"“"+r.quote+"”",170,905,740,56,4);
+      // 分数
+      x.textAlign="left";x.fillStyle=r.colors[0];x.font=`900 120px ${F}`;x.fillText(r.beauty,150,1250);
+      const nw=x.measureText(r.beauty+"").width;x.font=`bold 40px ${F}`;x.fillText("分",160+nw,1250);
+      x.fillStyle="#8A7B76";x.font=`28px ${F}`;x.fillText("颜值综合分",150,1140);
+      x.textAlign="right";x.fillStyle="#8A7B76";x.font=`30px ${F}`;x.fillText("最出彩 · "+r.best,930,1190);
+      x.fillStyle=r.colors[0];x.font=`bold 40px ${F}`;x.fillText("人设稀有度 "+r.rarity,930,1245);
+      // 雷达
+      drawRadar(x,540,1470,165,r.dims,r.colors[0],`bold 30px ${F}`);
+      // 底部
+      x.textAlign="center";x.fillStyle="#3B2F2F";x.font=`bold 40px ${F}`;x.fillText("你是哪种气质？来测测 →",540,1790);
+      x.fillStyle="#8A7B76";x.font=`28px ${F}`;x.fillText(location.host?location.host+location.pathname:"AI气质人设卡",540,1845);
+      ok(c.toDataURL("image/png"));
+    };img.src=photoURL;
+  });
+}
+
+/* ================= 交互 ================= */
+$("file").addEventListener("change",async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{photoURL=await loadImage(f)}catch{toast("图片读取失败，换一张试试");return}
+  $("preview").src=photoURL;$("preview").style.display="block";$("plus").style.display="none";
+  $("upTitle").textContent="照片已就绪";$("upHint").textContent="点击可更换";$("go").disabled=false;
+});
+const STEPS=["正在读取眉眼弧度…","分析面部轮廓与比例…","捕捉你的眼神情绪…","感知整体氛围感…","匹配气质图谱…","正在为你书写人设…"];
+$("go").addEventListener("click",async()=>{
+  $("scanImg").src=photoURL;show("s-load");let i=0;$("prog").style.width="0";
+  const t=setInterval(()=>{i++;$("status").textContent=STEPS[i%STEPS.length];$("prog").style.width=Math.min(95,i*17)+"%"},650);
+  const wait=new Promise(r=>setTimeout(r,3900));
+  try{const [res]=await Promise.all([analyze(photoURL),wait]);clearInterval(t);$("prog").style.width="100%";setTimeout(()=>render(res),250)}
+  catch(err){clearInterval(t);toast("分析失败，请稍后再试");show("s-home")}
+});
+$("save").addEventListener("click",async()=>{toast("正在生成分享图…");const u=await makeShare();$("shareImg").src=u;$("dl").href=u;$("modal").classList.add("on")});
+$("reveal").addEventListener("click",()=>{
+  $("reveal").style.display="none";const w=$("personaWrap");w.style.display="block";w.style.animation="fade .6s ease";
+  setTimeout(()=>w.scrollIntoView({behavior:"smooth",block:"start"}),50);
+});
+$("close").addEventListener("click",()=>$("modal").classList.remove("on"));
+$("again").addEventListener("click",()=>{show("s-home")});
+$("invite").addEventListener("click",async()=>{
+  const text=`我测出来是「${result.series}·${result.name}」，你是哪种气质？`,url=location.href;
+  if(navigator.share){try{await navigator.share({title:"AI气质人设卡",text,url})}catch{}}
+  else{try{await navigator.clipboard.writeText(text+" "+url);toast("链接已复制，发给好友吧")}catch{toast("复制失败，请手动分享链接")}}
+});
+</script>
+</body>
+</html>
