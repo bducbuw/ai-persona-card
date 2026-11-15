@@ -1,0 +1,25 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><title>激活码生成</title>
+<style>body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#FFF6EC;color:#3B2F2F;margin:0;padding:28px 20px;display:flex;justify-content:center}
+.b{width:100%;max-width:420px;background:#fff;border:1px solid #F1E3DA;border-radius:20px;padding:20px}
+h1{font-size:19px;margin:0 0 4px}p{font-size:12px;color:#8A7B76;margin:0 0 6px}
+input,select,textarea{width:100%;box-sizing:border-box;padding:13px;border-radius:12px;border:1px solid #F1E3DA;font-size:15px;margin-top:12px;background:#fff;color:#3B2F2F}
+textarea{height:200px;font-family:monospace;line-height:1.7}
+button{width:100%;border:none;border-radius:999px;padding:14px;font-size:16px;font-weight:600;margin-top:14px}
+.p{background:linear-gradient(90deg,#E8846B,#D9789C);color:#fff}.g{background:#fff;border:1px solid #F1E3DA;color:#3B2F2F}</style></head>
+<body><div class="b"><h1>🔑 激活码生成</h1><p>仅店主使用，不要把这个网址发给别人</p>
+<input id="k" type="password" placeholder="管理密码">
+<select id="d"><option value="1" selected>有效 1 天</option><option value="3">有效 3 天</option><option value="7">有效 7 天</option></select>
+<select id="n"><option value="1" selected>生成 1 个</option><option value="5">生成 5 个</option><option value="20">生成 20 个</option></select>
+<button class="p" id="go">生成</button><textarea id="o" readonly placeholder="生成的激活码会显示在这里"></textarea>
+<button class="g" id="cp">复制全部</button></div>
+<script>
+const API="https://persona-relay-uimiuxojmy.cn-hangzhou.fcapp.run",$=i=>document.getElementById(i);
+$("go").onclick=async()=>{$("o").value="生成中…";
+ try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"issue",adminKey:$("k").value,days:$("d").value,count:$("n").value})});
+  const j=await r.json().catch(()=>({}));
+  if(r.ok){const [y,m,d]=j.expires.split("-");$("o").value=j.codes.join("\n")+`\n\n（每个码测 1 次，${m}月${d}日 23:59 前有效）`}
+  else $("o").value=r.status===401?"管理密码不对":"生成失败："+(j.error||r.status)}
+ catch(e){$("o").value="网络错误，请稍后再试"}};
+$("cp").onclick=async()=>{try{await navigator.clipboard.writeText($("o").value);$("cp").textContent="已复制 ✓"}catch(e){$("o").select()}setTimeout(()=>$("cp").textContent="复制全部",1500)};
+</script></body></html>
