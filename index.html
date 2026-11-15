@@ -232,7 +232,7 @@ canvas#radar{display:block;margin:6px auto 0;width:260px;height:230px}
  * 后端接收 {image: dataURL}，返回与 mockAnalyze 相同结构的 JSON。
  * 注意：不要把大模型 API Key 写在这个前端文件里（GitHub Pages 上任何人都能看到）。
  */
-const CONFIG = { API_ENDPOINT: "" };
+const CONFIG = { API_ENDPOINT: "https://persona-relay-uimiuxojmy.cn-hangzhou.fcapp.run" };
 
 /* ================= 人设库（本地示例） ================= */
 const PERSONAS = [
@@ -383,13 +383,44 @@ function mockAnalyze(dataURL){
   });
 }
 
-async function analyze(dataURL){
-  if(CONFIG.API_ENDPOINT){
-    const r=await fetch(CONFIG.API_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image:dataURL})});
-    if(!r.ok) throw new Error("分析失败");
-    return r.json();
+function shrink(dataURL,max=768){
+  return new Promise(ok=>{const img=new Image();img.onload=()=>{
+    const k=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");
+    c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    ok(c.toDataURL("image/jpeg",0.82))};img.onerror=()=>ok(dataURL);img.src=dataURL});
+}
+const clamp=(v,a,b,d)=>{v=Math.round(+v);return isFinite(v)?Math.max(a,Math.min(b,v)):d};
+function mergeAI(base,ai){
+  const r={...base};
+  const p=PERSONAS.find(x=>x.name===ai.persona);
+  if(p) Object.assign(r,{series:p.series,name:p.name,emoji:p.emoji,colors:p.c,tags:p.tags,quote:p.quote,match:p.match,
+    tips:{"妆容":p.makeup,"穿搭":p.outfit,"拍照":p.photo}});
+  if(Array.isArray(ai.dims)&&ai.dims.length>=5&&Math.max(...ai.dims.slice(0,5))-Math.min(...ai.dims.slice(0,5))>=15&&Math.max(...ai.dims.slice(0,5))>=60) r.dims=ai.dims.slice(0,5).map((v,i)=>clamp(v,25,99,r.dims[i]));
+  if(Array.isArray(ai.aspects)&&ai.aspects.length){
+    r.aspects=base.aspects.map(b=>{const a=ai.aspects.find(x=>x&&x.name===b.name);
+      return a?{...b,label:String(a.label||b.label).slice(0,16),text:String(a.text||b.text).slice(0,60),score:clamp(a.score,85,98,b.score)}:b});
+    r.beauty=Math.round(r.aspects.reduce((s,a)=>s+a.score,0)/r.aspects.length*10)/10;
+    const bi=r.aspects.reduce((m,a,i)=>a.score>r.aspects[m].score?i:m,0);
+    r.best=r.aspects.some(a=>a.name===ai.best)?ai.best:r.aspects[bi].name;
   }
-  return mockAnalyze(dataURL);
+  if(ai.summary) r.summary=String(ai.summary).slice(0,90);
+  if(ai.quote) r.quote=String(ai.quote).slice(0,80);
+  if(ai.tips&&typeof ai.tips==="object") r.tips={...r.tips,...Object.fromEntries(Object.entries(ai.tips).filter(([k,v])=>r.tips[k]&&v).map(([k,v])=>[k,String(v).slice(0,40)]))};
+  return r;
+}
+async function analyze(dataURL){
+  const small=await shrink(dataURL);
+  const base=await mockAnalyze(small);
+  if(!CONFIG.API_ENDPOINT) return base;
+  try{
+    const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),55000);
+    const r=await fetch(CONFIG.API_ENDPOINT,{method:"POST",signal:ctl.signal,headers:{"Content-Type":"application/json"},body:JSON.stringify({image:small})});
+    clearTimeout(t);
+    if(!r.ok) throw new Error("http "+r.status);
+    const ai=await r.json();
+    if(ai.face===false) toast("没太看清脸，换张正脸清晰的照片效果更准哦");
+    return mergeAI(base,ai);
+  }catch(e){console.warn("AI 分析失败，使用本地结果",e);return base}
 }
 
 /* ================= 雷达图 ================= */
