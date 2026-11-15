@@ -42,6 +42,12 @@ h1 span{background:linear-gradient(90deg,var(--accent),#C77DB5);-webkit-backgrou
 .btn.primary{background:linear-gradient(90deg,var(--accent),#D9789C);color:#fff;box-shadow:0 8px 22px rgba(232,132,107,.35)}
 .btn.primary:disabled{opacity:.45;box-shadow:none}
 .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.codehint{font-size:12px;color:var(--muted);margin:8px 4px 0;min-height:16px}
+.codehint.ok{color:#4C9A6A}.codehint.bad{color:#D0574B}
+#admin{display:none;margin-top:26px;padding:16px;border-radius:18px;background:#fff;border:1px solid var(--line)}
+#admin h3{font-size:15px;margin-bottom:6px}
+#admin input,#admin select,#admin textarea{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);font-size:14px;margin-top:10px;background:#fff;color:var(--ink)}
+#admin textarea{height:150px;font-family:monospace;line-height:1.6}
 .note{text-align:center;font-size:11px;color:var(--muted);margin-top:14px;line-height:1.6}
 .count{text-align:center;font-size:12px;color:var(--muted);margin-top:22px}
 .count b{color:var(--accent)}
@@ -147,8 +153,19 @@ canvas#radar{display:block;margin:6px auto 0;width:260px;height:230px}
       <input type="file" id="file" accept="image/*" class="file-cover">
     </label>
     <div class="field"><input id="nick" maxlength="10" placeholder="你的昵称（选填，会印在卡片上）"></div>
+    <div class="field"><input id="code" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="激活码（购买后获得，一码测一次）"></div>
+    <p class="codehint" id="codeHint"></p>
     <button class="btn primary" id="go" disabled>生成我的人设卡</button>
     <p class="note">照片仅用于本次分析，不会被保存<br>结果仅供娱乐，你本来就很好看 ✨</p>
+    <div id="admin">
+      <h3>🔑 生成激活码（仅店主可用）</h3>
+      <input id="adKey" type="password" placeholder="管理密码">
+      <select id="adDays"><option value="1" selected>有效 1 天</option><option value="3">有效 3 天</option><option value="7">有效 7 天</option><option value="30">有效 30 天</option></select>
+      <select id="adCount"><option value="1" selected>生成 1 个</option><option value="5">生成 5 个</option><option value="20">生成 20 个</option><option value="50">生成 50 个</option></select>
+      <button class="btn primary" id="adGo">生成</button>
+      <textarea id="adOut" readonly placeholder="生成的激活码会显示在这里"></textarea>
+      <button class="btn ghost" id="adCopy">复制全部</button>
+    </div>
   </section>
 
   <!-- 2. 分析中 -->
@@ -431,13 +448,15 @@ async function analyze(dataURL){
   if(!CONFIG.API_ENDPOINT) return base;
   try{
     const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),55000);
-    const r=await fetch(CONFIG.API_ENDPOINT,{method:"POST",signal:ctl.signal,headers:{"Content-Type":"application/json"},body:JSON.stringify({image:small})});
+    const r=await fetch(CONFIG.API_ENDPOINT,{method:"POST",signal:ctl.signal,headers:{"Content-Type":"application/json"},body:JSON.stringify({image:small,code:getCode()})});
     clearTimeout(t);
+    if(r.status===401){const j=await r.json().catch(()=>({}));const e=new Error("code");e.reason=j.reason||"invalid";throw e}
     if(!r.ok) throw new Error("http "+r.status);
     const ai=await r.json();
+    if(ai.expires) setHint(ai.expires);
     if(ai.face===false) toast("没太看清脸，换张正脸清晰的照片效果更准哦");
     return mergeAI(base,ai);
-  }catch(e){console.warn("AI 分析失败，使用本地结果",e);return base}
+  }catch(e){if(e.message==="code")throw e;console.warn("AI 分析失败，使用本地结果",e);return base}
 }
 
 /* ================= 雷达图 ================= */
@@ -532,6 +551,37 @@ function makeShare(){
   });
 }
 
+/* ================= 激活码 ================= */
+const CODE_MSG={used:"这个激活码已经用过了，一个码只能测一次哦",invalid:"激活码不正确，请核对后重新输入",expired:"激活码已过期，如需继续使用请联系店主",revoked:"该激活码已失效，请联系店主"};
+function usedList(){try{return JSON.parse(localStorage.getItem("pc_used")||"[]")}catch(e){return []}}
+function isUsed(c){return usedList().includes(c)}
+function markUsed(c){const l=usedList();if(!l.includes(c)){l.push(c);localStorage.setItem("pc_used",JSON.stringify(l.slice(-50)))}localStorage.removeItem("pc_code")}
+function getCode(){return $("code").value.toUpperCase().replace(/[^0-9A-Z]/g,"")}
+function setHint(exp){const [y,m,d]=exp.split("-");$("codeHint").className="codehint ok";$("codeHint").textContent=`✓ 激活码有效，可测 1 次（${m}月${d}日 23:59 前）`}
+async function api(b){const r=await fetch(CONFIG.API_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});return {s:r.status,j:await r.json().catch(()=>({}))}}
+async function checkCode(){
+  const c=getCode();if(c.length!==16){$("codeHint").className="codehint";$("codeHint").textContent=c?"激活码是16位哦":"";return}
+  if(isUsed(c)){$("codeHint").className="codehint bad";$("codeHint").textContent=CODE_MSG.used;return}
+  $("codeHint").className="codehint";$("codeHint").textContent="正在验证…";
+  try{const {s,j}=await api({action:"check",code:c});
+    if(s===200&&j.ok){setHint(j.expires);localStorage.setItem("pc_code",$("code").value.trim())}
+    else{$("codeHint").className="codehint bad";$("codeHint").textContent=CODE_MSG[j.reason]||CODE_MSG.invalid;localStorage.removeItem("pc_code")}
+  }catch(e){$("codeHint").textContent=""}
+}
+$("code").value=localStorage.getItem("pc_code")||"";
+$("code").addEventListener("change",checkCode);
+$("code").addEventListener("input",()=>{if(getCode().length===16)checkCode()});
+if($("code").value)checkCode();
+if(/[?&]admin\b/.test(location.search)||location.hash==="#admin"){$("admin").style.display="block"}
+$("adGo").addEventListener("click",async()=>{
+  $("adOut").value="生成中…";
+  try{const {s,j}=await api({action:"issue",adminKey:$("adKey").value,days:$("adDays").value,count:$("adCount").value});
+    if(s===200){const [y,m,d]=j.expires.split("-");$("adOut").value=j.codes.join("\n")+`\n\n（每个码测 1 次，${m}月${d}日 23:59 前有效）`}
+    else $("adOut").value=s===401?"管理密码不对":"生成失败："+(j.error||s)}
+  catch(e){$("adOut").value="网络错误，请稍后再试"}
+});
+$("adCopy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("adOut").value);toast("已复制")}catch(e){$("adOut").select();toast("请长按手动复制")}});
+
 /* ================= 交互 ================= */
 $("file").addEventListener("change",async e=>{
   const f=e.target.files&&e.target.files[0];if(!f)return;
@@ -542,11 +592,16 @@ $("file").addEventListener("change",async e=>{
 });
 const STEPS=["正在读取眉眼弧度…","分析面部轮廓与比例…","捕捉你的眼神情绪…","感知整体氛围感…","匹配气质图谱…","正在为你书写人设…"];
 $("go").addEventListener("click",async()=>{
+  if(!getCode()){toast("请先输入激活码");$("code").focus();return}
+  if(isUsed(getCode())){toast(CODE_MSG.used);return}
+  const usingCode=getCode();
   $("scanImg").src=photoURL;show("s-load");let i=0;$("prog").style.width="0";
   const t=setInterval(()=>{i++;$("status").textContent=STEPS[i%STEPS.length];$("prog").style.width=Math.min(95,i*17)+"%"},650);
   const wait=new Promise(r=>setTimeout(r,3900));
-  try{const [res]=await Promise.all([analyze(photoURL),wait]);clearInterval(t);$("prog").style.width="100%";setTimeout(()=>render(res),250)}
-  catch(err){clearInterval(t);toast("分析失败，请稍后再试");show("s-home")}
+  try{const [res]=await Promise.all([analyze(photoURL),wait]);clearInterval(t);markUsed(usingCode);$("code").value="";$("codeHint").className="codehint";$("codeHint").textContent="";$("prog").style.width="100%";setTimeout(()=>render(res),250)}
+  catch(err){clearInterval(t);show("s-home");
+    if(err.message==="code"){const m=CODE_MSG[err.reason]||CODE_MSG.invalid;$("codeHint").className="codehint bad";$("codeHint").textContent=m;toast(m);localStorage.removeItem("pc_code")}
+    else toast("分析失败，请稍后再试")}
 });
 $("save").addEventListener("click",async()=>{toast("正在生成分享图…");const u=await makeShare();$("shareImg").src=u;$("dl").href=u;$("modal").classList.add("on")});
 $("reveal").addEventListener("click",()=>{
