@@ -27,7 +27,7 @@ h1 span{background:linear-gradient(90deg,var(--accent),#C77DB5);-webkit-backgrou
 .sub{text-align:center;color:var(--muted);font-size:14px;line-height:1.7}
 .sample{margin:26px auto 22px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
 .chip{font-size:12px;padding:6px 12px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--ink)}
-.upload{display:block;margin:0 auto;width:100%;border:2px dashed #EBC7B6;border-radius:24px;background:rgba(255,255,255,.7);
+.upload{display:block;position:relative;overflow:hidden;margin:0 auto;width:100%;border:2px dashed #EBC7B6;border-radius:24px;background:rgba(255,255,255,.7);
   padding:34px 16px;text-align:center;cursor:pointer;transition:.2s}
 .upload:active{transform:scale(.98)}
 .upload .icon{width:64px;height:64px;border-radius:50%;margin:0 auto 12px;background:linear-gradient(135deg,var(--accent2),var(--accent));
@@ -84,6 +84,7 @@ canvas#radar{display:block;margin:6px auto 0;width:260px;height:230px}
 .row{display:flex;gap:10px}
 .row .btn{margin-top:10px}
 
+.file-cover{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:200px;z-index:2}
 /* report */
 .report{margin-bottom:4px}
 .rep-head{display:flex;gap:16px;align-items:center;padding:22px 22px 6px}
@@ -138,13 +139,13 @@ canvas#radar{display:block;margin:6px auto 0;width:260px;height:230px}
       <span class="chip">☕ 温柔系·午后拿铁</span>
       <span class="chip">🎞️ 故事感·雨天胶片女主</span>
     </div>
-    <label class="upload" for="file">
+    <label class="upload" id="upBox">
       <img id="preview" alt="">
       <div class="icon" id="plus">+</div>
       <b id="upTitle">上传照片</b>
       <small id="upHint">支持相册或拍照，建议光线充足、五官清晰</small>
+      <input type="file" id="file" accept="image/*" class="file-cover">
     </label>
-    <input type="file" id="file" accept="image/*" hidden>
     <div class="field"><input id="nick" maxlength="10" placeholder="你的昵称（选填，会印在卡片上）"></div>
     <button class="btn primary" id="go" disabled>生成我的人设卡</button>
     <p class="note">照片仅用于本次分析，不会被保存<br>结果仅供娱乐，你本来就很好看 ✨</p>
@@ -335,13 +336,16 @@ function rng(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/429
 /* 压缩图片到 768px 内，方便本地处理和上传 */
 function loadImage(file){
   return new Promise((ok,bad)=>{
-    const r=new FileReader();
-    r.onload=()=>{const img=new Image();img.onload=()=>{
-      const m=768,s=Math.min(1,m/Math.max(img.width,img.height));
-      const c=document.createElement("canvas");c.width=img.width*s;c.height=img.height*s;
-      c.getContext("2d").drawImage(img,0,0,c.width,c.height);ok(c.toDataURL("image/jpeg",.88));
-    };img.onerror=bad;img.src=r.result};
-    r.onerror=bad;r.readAsDataURL(file);
+    const url=URL.createObjectURL(file),img=new Image();
+    img.onload=()=>{
+      try{
+        const m=768,s=Math.min(1,m/Math.max(img.width,img.height));
+        const c=document.createElement("canvas");c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
+        c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);ok(c.toDataURL("image/jpeg",.88));
+      }catch(e){bad(e)}
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);bad(new Error("decode"))};
+    img.src=url;
   });
 }
 
@@ -482,8 +486,9 @@ function makeShare(){
 
 /* ================= 交互 ================= */
 $("file").addEventListener("change",async e=>{
-  const f=e.target.files[0];if(!f)return;
-  try{photoURL=await loadImage(f)}catch{toast("图片读取失败，换一张试试");return}
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  $("upTitle").textContent="照片读取中…";
+  try{photoURL=await loadImage(f)}catch(err){$("upTitle").textContent="上传照片";toast(/heic|heif/i.test(f.type+f.name)?"暂不支持HEIC格式，请换JPG/PNG照片":"图片读取失败，换一张试试");return}
   $("preview").src=photoURL;$("preview").style.display="block";$("plus").style.display="none";
   $("upTitle").textContent="照片已就绪";$("upHint").textContent="点击可更换";$("go").disabled=false;
 });
@@ -504,8 +509,8 @@ $("close").addEventListener("click",()=>$("modal").classList.remove("on"));
 $("again").addEventListener("click",()=>{show("s-home")});
 $("invite").addEventListener("click",async()=>{
   const text=`我测出来是「${result.series}·${result.name}」，你是哪种气质？`,url=location.href;
-  if(navigator.share){try{await navigator.share({title:"AI气质人设卡",text,url})}catch{}}
-  else{try{await navigator.clipboard.writeText(text+" "+url);toast("链接已复制，发给好友吧")}catch{toast("复制失败，请手动分享链接")}}
+  if(navigator.share){try{await navigator.share({title:"AI气质人设卡",text,url})}catch(e){}}
+  else{try{await navigator.clipboard.writeText(text+" "+url);toast("链接已复制，发给好友吧")}catch(e){toast("复制失败，请手动分享链接")}}
 });
 </script>
 </body>
